@@ -36,6 +36,9 @@ newauction <- function(evaluations, #an m x n matrix; rows as bidders;cols as it
                           bidsteps,    #the amount to increase by every round of the auction
                           iterations){ #the number of rounds; default inf
   
+  #store the evaluation matrix
+  x <- evaluations
+  
   if (missing(bidsteps)) {
     bidsteps <- 1
   }
@@ -48,9 +51,6 @@ newauction <- function(evaluations, #an m x n matrix; rows as bidders;cols as it
     #step size plus an extra two
     iterations <- as.integer(h_eval/bidsteps) + 2
   }
-  
-  #store the evaluation matrix
-  x <- evaluations
   
   #create an empty copy of the auction matrix 
   compareEval <- matrix(0, nrow = nrow(x),ncol = ncol(x),dimnames = dimnames(x))
