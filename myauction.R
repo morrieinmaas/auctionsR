@@ -51,7 +51,7 @@ myauction <- function(alEval,      #airline slot evaluation matrix
 {
   #set some defaults for missing inputs
   if (missing(alEval)){
-    alEval <- matrix(sample.int(100, 25*25, TRUE), 25, 25)
+    alEval <- matrix(sample.int(100, 25*35, TRUE), 25, 35)
   }
   if(missing(iterations)){
     iterations <- Inf
@@ -65,8 +65,9 @@ myauction <- function(alEval,      #airline slot evaluation matrix
   
   #initialize vectors of size = no. of bidders to store the bids, (current) winners and create a 
   #queue to determine whos turn it is to bid
-  bids =  zeros(1,nrow(alEval))
-  wins =  zeros(1,nrow(alEval)) 
+  bids =  zeros(1,ncol(alEval))
+  wins =  zeros(1,ncol(alEval)) #this should be ncols instead of nrow as before to include all items not all bidders
+  # the was also a mistake later on with [bb,h] being swapped
   bidq =  matrix(1:nrow(alEval), 1, nrow(alEval)) #bidder queue
   
   #print evaluation matrix to console; maybe comment out for large matrices
@@ -81,35 +82,62 @@ myauction <- function(alEval,      #airline slot evaluation matrix
   #start timing
   tic()
   
-  #wxecute auctiooning of slots (items) whilst there are iterations left and items to auction
+  #execute auctioning of slots (items) whilst there are iterations left and items to auction
   while (bb != 0 && (iterations > 0) ) {
     #replace first (available) bidder out of the queue
+    if(!is.na(bb)){
     bidq <- replace(bidq, bidq==bb, 0) 
-    #prevent out of bounds error in which.max(alEval[,bb]) for non-symmetric matrices
-    if (bb > ncol(alEval)){
-      bb <-sample(1:ncol(alEval),1)
     }
     #find the row index of higher bid for same item
-    h <- which.max(alEval[,bb] - bids) 
-    if( (alEval[h, bb] - (bids[1,h]+bidsteps)) >= 0 && wins[1,h] != bb){ 
+    h <- which.max(alEval[bb,] - bids) 
+    if( (alEval[bb, h] - (bids[1,h]+bidsteps)) >= 0 && wins[1,h] != bb){ 
       if (wins[1,h] > 0) {
         #look for the next accessible bid
         nb = which(bidq==0)[1] 
-        #shift all biddrrs in the queue to the left
+        #shift all bidders in the queue to the left
         bidq[1, (nb:(length(bidq)-1))] <- bidq[1, (nb+1):length(bidq)] 
-        # put bormer left-most bidder back in the queue at the end
+        # put former left-most bidder back in the queue at the end
         bidq[1, length(bidq)] <- wins[1,h] 
       }
       #allocate winners bb to item h
       wins[1, h] <- bb
       #store increased new bid
       bids[1, h] <- bids[1, h] + bidsteps
+      
+      #uncomment the following if you want bidder to shift their bid to a 
+      #different item if another bidder offers a higher bid 
+  #    realoc <- which(alEval[,h]<bids[1,h])
+  #    if (length(realoc) >= 1){
+  #      subeval <- alEval[realoc,]
+      
+      #find lowest bid slots to bid on ; is.list(subeval)
+  #      if (length(subeval) > 0){
+  #        rndNewSlots <- alply(subeval,1,function(a)  which(a == min(a)))
+      
+      #if there are multiple find the closest
+  #        if(length(rndNewSlots) >= 1){
+      #this does the job now;problem is that if there is only a single entry in rndNewSlots sample()
+      #gives a random slot that might not be the lowest or zero
+  #            rndNS <- lapply(rndNewSlots,function(a) sample(a,1))
+  #            rndNS <- as.integer(rndNS)
+      
+  #           if (length(alEval[realoc,h]) >= 1) {
+  #            diag(alEval[realoc , rndNS]) <- alEval[realoc,h]
+  #            } else if (length(alEval[realoc,h]) == 1){
+  #            alEval[realoc , as.integer(rndNS)] <- alEval[realoc,h]
+  #          }
+         #set the old slot to 0
+  #      alEval[realoc,h ] <- 0
+      
+  #    }
+  #        }
+  #     }
     }
     #print each round to console; could be nicer in the long run
     #for e.g. current leader the number at entry n of ins is the current owner/has highest bid
     #for item n
     #analogue for Bids remaining 
-     if (output){
+    if (output){
       message("Number of Bids: ", bids/bidsteps)
       message("Current Leader for item: ", wins)
       message("Bids remaining: ", bidq)
@@ -124,12 +152,12 @@ myauction <- function(alEval,      #airline slot evaluation matrix
     }
     #decrease the iterations (rounds) left
     iterations = iterations - 1
-    }
-    
+  }
+  
   owned <- which( wins > 0)
   
   #initialize with zeros: noone has an item 
-  satisfaction <- zeros(1,length(alEval[,2])) 
+  satisfaction <- zeros(1,length(alEval[2,])) 
   for (i in owned){
     #place a one if bidders have successfully obtained an 
     satisfaction[1, i] <- 1
@@ -142,6 +170,7 @@ myauction <- function(alEval,      #airline slot evaluation matrix
     message("Satisfied bidders: ", satisfaction) 
     message("Calculated in: ", t_end ," seconds")
   }
+  result <- matrix(c(wins,bids),nrow = 2,ncol = length(bids), byrow = TRUE)
+  return(result)
   
 }
-
